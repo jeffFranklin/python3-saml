@@ -932,6 +932,33 @@ class OneLogin_Saml2_Response_Test(unittest.TestCase):
         self.assertFalse(response_2.is_valid(request_data))
         self.assertIn('is not a valid audience for this Response', response_2.get_error())
 
+    def testIsInValidAuthenticationContext(self):
+        """
+        Tests that requestedAuthnContext, when set, is compared against the
+        response AuthnContext, which is what you use for two-factor
+        authentication. Without this check you can get back a valid response
+        that didn't complete the two-factor step.
+        """
+        request_data = self.get_request_data()
+        message = self.file_contents(join(self.data_path, 'responses', 'valid_response.xml.base64'))
+        two_factor_context = 'urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken'
+        settings = self.loadSettingsJSON()
+        settings['security']['requestedAuthnContext'] = [two_factor_context]
+        settings = OneLogin_Saml2_Settings(settings)
+        settings.set_strict(True)
+
+        response = OneLogin_Saml2_Response(settings, message)
+        self.assertFalse(response.is_valid(request_data))
+        self.assertIn('requested AuthnContext was not in the Response', response.get_error())
+
+        two_factor_message = compat.to_string(OneLogin_Saml2_Utils.b64decode(message))
+        two_factor_message = two_factor_message.replace('urn:oasis:names:tc:SAML:2.0:ac:classes:Password', two_factor_context)
+        two_factor_message = OneLogin_Saml2_Utils.b64encode(two_factor_message)
+        response = OneLogin_Saml2_Response(settings, two_factor_message)
+        response.is_valid(request_data)
+        # check that we got as far as destination validation, which comes later
+        self.assertIn('The response was received at', response.get_error())
+
     def testIsInValidIssuer(self):
         """
         Tests the is_valid method of the OneLogin_Saml2_Response class
