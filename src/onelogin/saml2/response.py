@@ -66,13 +66,6 @@ class OneLogin_Saml2_Response(object):
         """
         self.__error = None
         try:
-            # Checks SAML version
-            if self.document.get('Version', None) != '2.0':
-                raise OneLogin_Saml2_ValidationError(
-                    'Unsupported SAML version',
-                    OneLogin_Saml2_ValidationError.UNSUPPORTED_SAML_VERSION
-                )
-
             # Checks that ID exists
             if self.document.get('ID', None) is None:
                 raise OneLogin_Saml2_ValidationError(
